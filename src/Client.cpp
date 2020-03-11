@@ -22,25 +22,58 @@ Client::~Client() {
 
 
 void Client::initialize(unsigned int player, unsigned int board_size){
+        Client::player = player;
+        vector<vector<int>> iBoard;
+        iBoard.resize(board_size, vector<int>(board_size, 0));
+        string whoIsP = std::to_string(player);
+        string fname = "player_" + whoIsP + ".action_board.json";
+        ofstream array_ofp(fname); // create an output file stream
+        cereal::JSONOutputArchive write_archive(array_ofp); // initialize an archive on the file
+        write_archive(cereal::make_nvp("board", iBoard)); // serialize the data giving it a name
+        initialized = true;
+
 }
 
 
 void Client::fire(unsigned int x, unsigned int y) {
+    string whoIsP = std::to_string(player);
+    string fname = "player_" + whoIsP +".shot.json";
+    ofstream array_ofp(fname); // create an output file stream
+    cereal::JSONOutputArchive write_archive(array_ofp);
+    write_archive(CEREAL_NVP(x), CEREAL_NVP(y));
 }
 
 
 bool Client::result_available() {
+    //looking for a return of true or false, just make sure the file exists and return true if so
+    string whoIsP = std::to_string(player);
+    string fname = "player_" + whoIsP +".result.json";
+    ifstream ifs(fname);
+    if(ifs.good()){
+        return true;
+    } else {
+        return false;
+    }
+
 }
 
 
 int Client::get_result() {
+
+    string whoIsP = std::to_string(player);
+    string fname = "player_" + whoIsP +".result.json";
+    ifstream ifs(fname);
+
+    
 }
 
 
 
 void Client::update_action_board(int result, unsigned int x, unsigned int y) {
+
 }
 
 
 string Client::render_action_board(){
+
 }
