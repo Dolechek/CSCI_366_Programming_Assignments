@@ -18,7 +18,6 @@
 #include "common.hpp"
 #include "Server.hpp"
 
-
 /**
  * Calculate the length of a file (helper function)
  *
@@ -26,19 +25,152 @@
  * @return length of the file in bytes
  */
 int get_file_length(ifstream *file){
+    file->seekg(0, ios::beg);
+    int start = file->tellg();
+    file->seekg(0, ios::end);
+    int end = file->tellg();
+    return end - start;
 }
 
 
 void Server::initialize(unsigned int board_size,
                         string p1_setup_board,
                         string p2_setup_board){
+    this->board_size = board_size;
+    /*Variables for bringing in the file*/
+    ifstream ifs1;
+    ifstream ifs2;
+    /*Open the files*/
+
+    ifs1.open(p1_setup_board);
+    if(ifs1.fail()){
+        throw ServerException("Error: Couldn't open" + p1_setup_board);
+    }
+    ifs2.open(p2_setup_board);
+    if(ifs2.fail()){
+        throw ServerException("Error: Couldn't open" + p2_setup_board);
+    }
+    if(get_file_length(&ifs1) != (board_size*(board_size+1))){
+        throw ServerException("Error: Incorrect Board Size");
+    }
+
+    if(get_file_length(&ifs2) != (board_size*(board_size+1))){
+        throw ServerException("Error: Incorrect Board Size");
+    }
+    /*sets up board for player 1 & prints it out*/
+
+    /*for(int w = -1; w < BOARD_SIZE; w++){
+        for(int z=0; z < BOARD_SIZE; z++){
+            ifs1 >> boardAr1[w][z];
+            cout << boardAr1[w][z];
+        }
+    }//end player 1 board set up
+    */
+    /*sets up board for player 2 & prints it out*/
+    /*for(int w = -1; w < BOARD_SIZE; w++){
+        for(int z = -1; z < BOARD_SIZE; z++){
+            ifs2 >> boardAr2[w][z];
+            cout << boardAr2[w][z];
+        }
+    }//end player 2 board set up
+    */
 }
 
 
 int Server::evaluate_shot(unsigned int player, unsigned int x, unsigned int y) {
+    /*Local Variables*/
+    ifstream ifs;
+    string line;
+    vector<vector<char>> cBoard;
+    /*two if statements to check and make sure there is only 2 players*/
+    if(player > 2 || player < 1){
+        throw ServerException("Error: Invalid player number.");
+    }
+    /*03/09 --- changed params from BOARD_SIZE to lowercase*/
+    if(y >= board_size || x >= board_size){
+        return OUT_OF_BOUNDS;
+    }
+    /*checking for hits and misses*/
+    /*Found the information for the 2D vector from this stack overflow link. Code used was the while loop
+     * and modified it a bit to work with what I wanted it to do.
+     * https://stackoverflow.com/questions/56554212/how-do-i-read-a-text-file-into-a-2d-vector
+     * */
+    if(player == 2){
+        ifs.open("player_1.setup_board.txt");
+    }else if(player == 1){
+        ifs.open("player_2.setup_board.txt");
+    }
+    while (std::getline(ifs, line)) {
+        std::vector<char> row;
+        for (char &c : line) {
+            if (c != '\n') {
+                row.push_back(c);
+            }
+        }
+        cBoard.push_back(row);
+    }
+    ifs.close();
+    /*comment for board hit/miss*/
+    if(cBoard[y][x] != '_')
+        return HIT;
+    else
+        return MISS;
 }
 
 
 int Server::process_shot(unsigned int player) {
-   return NO_SHOT_FILE;
+    /*code to open file and read in the coordinates provided by player*/
+    if(player > 2 || player < 1){
+        throw ServerException("Error: invalid player number");
+    }
+    string whoIsP = std::to_string(player); //whoIsP will be overridden by whoever just shot.
+    string input_file = "player_" + whoIsP + ".shot.json";
+    int x = 0,y = 0;
+    ifstream ifs(input_file);
+    if(!ifs){
+        return NO_SHOT_FILE;
+    }
+    cereal::JSONInputArchive ipArchive(ifs);
+    ipArchive(x,y);
+    ifs.close();
+    /*code to write back to the JSON FILE*/
+    int result = evaluate_shot(player,x,y);
+    string result_file = "player_" + whoIsP + ".result.json";
+    remove(result_file.c_str());
+
+
+    if(player == 1){
+        ofstream ofs(result_file);
+        cereal::JSONOutputArchive opArchive(ofs);
+        opArchive(CEREAL_NVP(result));
+        remove("player_1.shot.json");
+        return SHOT_FILE_PROCESSED;
+    }else if(player == 2){
+        ofstream ofs(result_file);
+        cereal::JSONOutputArchive opArchive(ofs);
+        opArchive(CEREAL_NVP(result));
+        remove("player_2.shot.json");
+        return SHOT_FILE_PROCESSED;
+    }
+
+    /* OLD CODE THAT I WAS MESSING WITH
+     * if(eval == HIT){
+        ofstream rfs(result_file);
+        cereal::JSONOutputArchive opArchive(rfs);
+        opArchive(cereal::make_nvp("result", HIT));
+        rfs.close();
+        return SHOT_FILE_PROCESSED;
+    }else if(eval == MISS){
+        ofstream rfs(result_file); //create an input stream
+        cereal::JSONOutputArchive opArchive(rfs);
+        opArchive(cereal::make_nvp("result", MISS));
+        rfs.close();
+        return SHOT_FILE_PROCESSED;
+    }else if(eval == OUT_OF_BOUNDS){
+        ofstream rfs(result_file);
+        cereal::JSONOutputArchive opArchive(rfs);
+        opArchive(cereal::make_nvp("result", OUT_OF_BOUNDS));
+        rfs.close();
+        return SHOT_FILE_PROCESSED;
+    }*/
 }
