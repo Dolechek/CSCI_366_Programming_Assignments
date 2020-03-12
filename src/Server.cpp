@@ -36,12 +36,14 @@ int get_file_length(ifstream *file){
 void Server::initialize(unsigned int board_size,
                         string p1_setup_board,
                         string p2_setup_board){
+
     this->board_size = board_size;
+
     /*Variables for bringing in the file*/
     ifstream ifs1;
     ifstream ifs2;
-    /*Open the files*/
 
+    /*Open the files*/
     ifs1.open(p1_setup_board);
     if(ifs1.fail()){
         throw ServerException("Error: Couldn't open" + p1_setup_board);
@@ -57,23 +59,7 @@ void Server::initialize(unsigned int board_size,
     if(get_file_length(&ifs2) != (board_size*(board_size+1))){
         throw ServerException("Error: Incorrect Board Size");
     }
-    /*sets up board for player 1 & prints it out*/
 
-    /*for(int w = -1; w < BOARD_SIZE; w++){
-        for(int z=0; z < BOARD_SIZE; z++){
-            ifs1 >> boardAr1[w][z];
-            cout << boardAr1[w][z];
-        }
-    }//end player 1 board set up
-    */
-    /*sets up board for player 2 & prints it out*/
-    /*for(int w = -1; w < BOARD_SIZE; w++){
-        for(int z = -1; z < BOARD_SIZE; z++){
-            ifs2 >> boardAr2[w][z];
-            cout << boardAr2[w][z];
-        }
-    }//end player 2 board set up
-    */
 }
 
 
@@ -81,15 +67,16 @@ int Server::evaluate_shot(unsigned int player, unsigned int x, unsigned int y) {
     /*Local Variables*/
     ifstream ifs;
     string line;
-    vector<vector<char>> cBoard;
+    vector<vector<char>> cBoard; // 2D vector of characters
     /*two if statements to check and make sure there is only 2 players*/
     if(player > 2 || player < 1){
         throw ServerException("Error: Invalid player number.");
     }
-    /*03/09 --- changed params from BOARD_SIZE to lowercase*/
+    /*make sure we aren't out of bounds*/
     if(y >= board_size || x >= board_size){
         return OUT_OF_BOUNDS;
     }
+
     /*checking for hits and misses*/
     /*Found the information for the 2D vector from this stack overflow link. Code used was the while loop
      * and modified it a bit to work with what I wanted it to do.
@@ -109,8 +96,9 @@ int Server::evaluate_shot(unsigned int player, unsigned int x, unsigned int y) {
         }
         cBoard.push_back(row);
     }
-    ifs.close();
-    /*comment for board hit/miss*/
+    ifs.close(); // close the input file stream
+
+    /*logic to register hits or misses*/
     if(cBoard[y][x] != '_')
         return HIT;
     else
@@ -123,22 +111,28 @@ int Server::process_shot(unsigned int player) {
     if(player > 2 || player < 1){
         throw ServerException("Error: invalid player number");
     }
+
     string whoIsP = std::to_string(player); //whoIsP will be overridden by whoever just shot.
-    string input_file = "player_" + whoIsP + ".shot.json";
-    int x = 0,y = 0;
-    ifstream ifs(input_file);
+    string input_file = "player_" + whoIsP + ".shot.json"; // string will concatenate for file name set to input_file
+    int x = 0,y = 0; // empty x and y variables
+    ifstream ifs(input_file); // open input file stream
+
+    /*checking to see if a shot has even been made*/
     if(!ifs){
         return NO_SHOT_FILE;
     }
-    cereal::JSONInputArchive ipArchive(ifs);
-    ipArchive(x,y);
-    ifs.close();
+
+    cereal::JSONInputArchive ipArchive(ifs); // initialize an archive on the file
+    ipArchive(x,y); // deserialize
+    ifs.close(); // close the input file stream
+
     /*code to write back to the JSON FILE*/
     int result = evaluate_shot(player,x,y);
     string result_file = "player_" + whoIsP + ".result.json";
-    remove(result_file.c_str());
+    remove(result_file.c_str()); // remove serialization of file
 
-
+    /* Logic to handle if player 1 or 2 was the one that shot.
+     * since it wouldn't let me use whoIsP */
     if(player == 1){
         ofstream ofs(result_file);
         cereal::JSONOutputArchive opArchive(ofs);

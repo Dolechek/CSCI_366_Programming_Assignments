@@ -22,33 +22,44 @@ Client::~Client() {
 
 
 void Client::initialize(unsigned int player, unsigned int board_size){
-        Client::player = player;
-        vector<vector<int>> iBoard;
-        iBoard.resize(board_size, vector<int>(board_size, 0));
-        string whoIsP = std::to_string(player);
-        string fname = "player_" + whoIsP + ".action_board.json";
+        Client::player = player;// this allows me to access 'player' in lower functions
+
+        vector<vector<int>> iBoard; // creating 2d vector of ints
+        iBoard.resize(board_size, vector<int>(board_size, 0)); // filling vector w/ 0's
+
+        string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+        string fname = "player_" + whoIsP + ".action_board.json"; // fname holds whichever player_#.action_board.json is
+
         ofstream array_ofp(fname); // create an output file stream
         cereal::JSONOutputArchive write_archive(array_ofp); // initialize an archive on the file
         write_archive(cereal::make_nvp("board", iBoard)); // serialize the data giving it a name
-        initialized = true;
+
+        initialized = true; // I don't believe this is needed just yet. but here either way.
 
 }
 
 
 void Client::fire(unsigned int x, unsigned int y) {
-    string whoIsP = std::to_string(player);
-    string fname = "player_" + whoIsP +".shot.json";
-    ofstream array_ofp(fname); // create an output file stream
-    cereal::JSONOutputArchive write_archive(array_ofp);
-    write_archive(CEREAL_NVP(x), CEREAL_NVP(y));
+
+    string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP +".shot.json"; // fname holds whichever player_#.action_board.json is
+
+    ofstream ofs(fname); // create an output file stream
+    cereal::JSONOutputArchive opArchive(ofs); // initialize an archive on the file
+    /*https://stackoverflow.com/questions/47297648/using-cereal-to-deserialize-a-json-string
+     * found the CEREAL_NVP here. */
+    opArchive(CEREAL_NVP(x), CEREAL_NVP(y)); // serialize the data
+
 }
 
 
 bool Client::result_available() {
-    //looking for a return of true or false, just make sure the file exists and return true if so
-    string whoIsP = std::to_string(player);
-    string fname = "player_" + whoIsP +".result.json";
-    ifstream ifs(fname);
+
+    string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP +".result.json"; // fname holds whichever player_#.action_board.json is
+    ifstream ifs(fname); // create input file stream
+
+    /*logic to make sure the shot was valid or not*/
     if(ifs.good()){
         return true;
     } else {
@@ -60,17 +71,45 @@ bool Client::result_available() {
 
 int Client::get_result() {
 
-    string whoIsP = std::to_string(player);
-    string fname = "player_" + whoIsP +".result.json";
-    ifstream ifs(fname);
+    string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP +".result.json"; // fname holds whichever player_#.action_board.json is
 
-    
+    int shot; // shot variable to later be evaluated with hit, miss, out of bounds
+
+    ifstream ifs(fname); // create an output file stream
+    cereal::JSONInputArchive ipArchive(ifs); // initialize an archive on the file
+    ipArchive(shot); // deserialize
+
+    /*Hard coded the 2 files since it will not allow me to use
+     * the variable whoIsP w/ my string combination*/
+    remove("player_1.result.json");
+    remove("player_2.result.json");
+
+    /*if shot is not valid then throw exception*/
+    if(shot == 1 || shot == -1 || shot == 0){
+        return shot;
+    }else{
+        throw ClientException("Error: issue in get_result");
+    }
+
+
 }
-
 
 
 void Client::update_action_board(int result, unsigned int x, unsigned int y) {
 
+    string whoIsP = std::to_string(player); //  whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP + ".action_board.json"; // fname holds whichever player_#.action_board.json is
+    vector<vector<int>> tdVector; // 2D vector for updating with the result
+
+    ifstream ifs(fname); // create input file stream
+    cereal::JSONInputArchive ipArchive(ifs); // initialize an archive on the file
+    ipArchive(tdVector); // deserialize the array
+    tdVector[x][y] = result; // set the 2d vector equal to the result
+
+    ofstream ofs(fname); // create output file stream
+    cereal::JSONOutputArchive opArchive(ofs); // initialize an archive on the file
+    opArchive(cereal::make_nvp("board", tdVector)); // deserialize
 }
 
 
