@@ -51,15 +51,64 @@ void Client::fire(unsigned int x, unsigned int y) {
 
 
 bool Client::result_available() {
+
+    string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP +".result.json"; // fname holds whichever player_#.action_board.json is
+    ifstream ifs(fname); // create input file stream
+
+    /*logic to make sure the shot was valid or not*/
+    if(ifs.good()){
+        return true;
+    } else {
+        return false;
+    }
+
 }
 
 
 int Client::get_result() {
+
+    string whoIsP = std::to_string(player); // whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP +".result.json"; // fname holds whichever player_#.action_board.json is
+
+    int shot; // shot variable to later be evaluated with hit, miss, out of bounds
+
+    ifstream ifs(fname); // create an output file stream
+    cereal::JSONInputArchive ipArchive(ifs); // initialize an archive on the file
+    ipArchive(shot); // deserialize
+
+    /*Hard coded the 2 files since it will not allow me to use
+     * the variable whoIsP w/ my string combination*/
+    remove("player_1.result.json");
+    remove("player_2.result.json");
+
+    /*if shot is not valid then throw exception*/
+    if(shot == 1 || shot == -1 || shot == 0){
+        return shot;
+    }else{
+        throw ClientException("Error: issue in get_result");
+    }
+
 }
 
 
 
 void Client::update_action_board(int result, unsigned int x, unsigned int y) {
+
+    string whoIsP = std::to_string(player); //  whoIsP will change values depending on player 1 or 2
+    string fname = "player_" + whoIsP + ".action_board.json"; // fname holds whichever player_#.action_board.json is
+    vector<vector<int>> tdVector; // 2D vector for updating with the result
+
+    ifstream ifs(fname); // create input file stream
+    cereal::JSONInputArchive ipArchive(ifs); // initialize an archive on the file
+    ipArchive(tdVector); // deserialize the array
+    tdVector[x][y] = result; // set the 2d vector equal to the result
+
+    ofstream ofs(fname); // create output file stream
+    cereal::JSONOutputArchive opArchive(ofs); // initialize an archive on the file
+    opArchive(cereal::make_nvp("board", tdVector)); // deserialize
+
+
 }
 
 
